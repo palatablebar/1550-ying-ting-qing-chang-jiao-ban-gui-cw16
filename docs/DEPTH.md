@@ -16,6 +16,7 @@ AI/ML · 传统ML · 中型
 | M6 | 排片分组 | 差异定位和外推审查 | `src/cinemaready/programming_mix/service.py` | `tests/test_programming_mix.py` |
 | M7 | 清场计划 | 硬规则与额度分配 | `src/cinemaready/usher_windows/service.py` | `tests/test_usher_windows.py` |
 | M8 | 开厅交接 | 单据及额度证据 | `src/cinemaready/hall_handover/service.py` | `tests/test_hall_handover.py` |
+| M9 | 补救排窗 | 赶不上开门场次的措施重算与签发守恒 | `src/cinemaready/remedial_windows/service.py` | `tests/test_remedial_windows.py` |
 
 ## 深度登记
 
@@ -30,3 +31,6 @@ AI/ML · 传统ML · 中型
 | TRAP-44 | 校准样本不足 | 分派前转人工判读并保留原因 | `src/cinemaready/slot_backcheck/service.py` | `tests/test_slot_backcheck.py::test_empty_calibration_requires_review` |
 | TRAP-53 | 单条推断与混批 | 复用冻结参数，各条估计完全一致 | `src/cinemaready/cleanup_trend/service.py` | `tests/test_cleanup_trend.py::test_input_batch_invariance` |
 | TRAP-54 | 特征版本与模型不配对 | 拒绝继续推断并要求重拟合 | `src/cinemaready/cleanup_trend/service.py` | `tests/test_cleanup_trend.py::test_mismatched_model_input_version_fails` |
+| TRAP-61 | 补救措施改动缺测读数 | 方案不签发并保留缺测原因，措施只能改实测字段 | `src/cinemaready/remedial_windows/options.py` | `tests/test_remedial_windows.py::test_missing_reading_is_never_used_as_a_remedial_change` |
+| TRAP-62 | 估计上界留不出开门验收 | 准时方案拒签，先试准时层再退延后层，都不行留待协调 | `src/cinemaready/remedial_windows/service.py` | `tests/test_remedial_windows.py::test_upper_bound_acceptance_gate_rejects_on_time_claim` |
+| TRAP-63 | 补救工位与常规分派余额不一致 | 同批重算，补救占用与剩余工位守恒，按措施/开门时刻/工位对账 | `src/cinemaready/remedial_windows/evidence.py` | `tests/test_remedial_windows.py::test_ledger_and_export_reconcile_by_measure_door_and_station` |

@@ -10,6 +10,8 @@ from .slot_backcheck import service as calibration_service
 from .programming_mix import service as monitor_service
 from .usher_windows import service as dispatch_service
 from .hall_handover import service as audit_service
+from .remedial_windows import service as remedial_service
+from .remedial_windows import evidence as remedial_evidence
 from .turnover_calendar import contracts as window_contract
 
 PRESET = Path(__file__).resolve().parents[2] / 'sample_data' / 'show_handoffs_sample.json'
@@ -121,6 +123,7 @@ def execute(documents, capacity=12, mode='balanced', *, as_of=96):
     fitted_calibration, estimates = dossier.grading()
     evaluated, checked_live, drift = dossier.verification(estimates,fitted_calibration)
     allocation = dispatch_service.plan_jobs(checked_live,drift.domain,capacity,mode)
+    policy = dispatch_service.Policy.select(capacity, mode)
     closed = dossier.seal(allocation,mode)
     intake,windows,state,features,kernel = dossier.accepted,dossier.history,dossier.feature_stamp,dossier.prepared,dossier.forecaster
     scored = estimates['live']
@@ -137,6 +140,16 @@ def execute(documents, capacity=12, mode='balanced', *, as_of=96):
     vectors = {item.key: item for item in features.live}
     row_list = rows_for(allocation, scored, vectors)
     operating_rows = dispatch_service.operating_ledger(row_list)
+    # 清场倒排里赶不上开门的场次：用冻结模型与校准重算单项和联动补救措施
+    remedial = remedial_service.plan_remedial_windows(
+        features.live, {job.key: job.state for job in allocation.jobs},
+        allocation.balance, policy.group_quota, state, kernel, fitted_calibration,
+        used_by_group=allocation.used_by_group,
+        base_costs={job.key: job.cost for job in allocation.jobs},
+    )
+    remedial_rows = remedial_evidence.remedial_ledger_rows(remedial)
+    remedial_check = remedial_evidence.remedial_reconciliation(remedial)
+    remedial_measures = remedial_evidence.measure_reconciliation(remedial)
     overtime = calibration_service.boundary_diagnostics(evaluated, 15)
     sector = calibration_service.sector_replay(evaluated, 15)
     operating_shift = monitor_service.shop_floor_shift(features.train, features.live)
@@ -156,6 +169,9 @@ def execute(documents, capacity=12, mode='balanced', *, as_of=96):
     ]
     details[6]['operating_rows'] = operating_rows
     details[6]['operating_title'] = '清场倒排窗口'
+    details[6]['remedial_rows'] = remedial_rows
+    details[6]['remedial_title'] = '补救排窗签发'
+    details[6]['remedial_reconciliation'] = remedial_check
     points = [{'label': row['key'], 'value': row['estimate'], 'state': row['state'], 'zone': row['zone'],
                'upper': row['interval'], 'cost': row['cost']} for row in sorted(row_list, key=lambda row: row['key'])]
     def estimate(vector):
@@ -169,6 +185,8 @@ def execute(documents, capacity=12, mode='balanced', *, as_of=96):
         row['joint_experiments'] = feature_service.render_joint_experiments(current,state,estimate)
     details[7]['records'].extend(audit_service.site_checklist(row_list))
     details[7]['records'].extend(audit_service.intervention_summary(row_list))
+    details[7]['records'].extend(remedial_measures)
+    details[7]['records'].extend(remedial_check)
     overview_report = {'capacity' : capacity, 'mode': mode, 'as_of': as_of, 'sample_hash': closed.batch_hash,
               'policy_hash': closed.policy_hash, 'feature_stamp': state.fingerprint,
               'model': kernel.name, 'run_id': closed.stamp, 'object_name': DISPLAY['object_name'],
@@ -178,7 +196,15 @@ def execute(documents, capacity=12, mode='balanced', *, as_of=96):
  'spill': ('报告污渍点', '处'),
  'minutes': ('片尾结束至下一场', 'min'),
  'bins': ('厅外垃圾桶', '个'),
- 'stairs': ('清理阶梯', '级')}, 'metrics': overview, 'performance': replay_metrics(performance), 'rows': row_list, 'series': points}
+ 'stairs': ('清理阶梯', '级')}, 'metrics': overview, 'performance': replay_metrics(performance), 'rows': row_list, 'series': points,
+              'remedial': {'candidates': list(remedial.candidates),
+                           'signed': [item.evidence() for item in remedial.signed],
+                           'pending': [item.evidence() for item in remedial.pending],
+                           'base_balance': remedial.base_balance,
+                           'remedial_used': remedial.remedial_used,
+                           'final_balance': remedial.final_balance,
+                           'reconciliation': remedial_check,
+                           'measure_ledger': remedial_measures}}
     return overview_report
 
 

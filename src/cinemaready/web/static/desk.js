@@ -114,6 +114,11 @@ function showDetail() {
             card.append(node('h3',plan.operating_title,'inner-heading'));
             showTables(card,fieldNotes);
         }
+        const remedialNotes = plan?.remedial_rows?.filter(item => item['关联单据'] === currentItem.key);
+        if (remedialNotes?.length) {
+            card.append(node('h3',plan.remedial_title,'inner-heading'));
+            showTables(card,remedialNotes);
+        }
         renderMeasurements(card,currentItem);
         return;
     }
@@ -128,6 +133,20 @@ function showDetail() {
             if (ticket) inspect(ticket);
         }});
         card.append(plan);
+    }
+    if (panel.remedial_rows?.length) {
+        const remedial = node('details',undefined,'rejected');
+        remedial.open = true;
+        remedial.append(node('summary',`${panel.remedial_title} · ${panel.remedial_rows.length} 条`));
+        showTables(remedial,panel.remedial_rows,{linkKey:'关联单据',choose: record => {
+            const ticket = ledger.rows.find(item => item.key === record['关联单据']);
+            if (ticket) inspect(ticket);
+        }});
+        if (panel.remedial_reconciliation?.length) {
+            remedial.append(node('h3','工位余额对账','inner-heading'));
+            showTables(remedial,panel.remedial_reconciliation);
+        }
+        card.append(remedial);
     }
     showTables(card,panel.records);
     if (panel.errors.length > 0) {
