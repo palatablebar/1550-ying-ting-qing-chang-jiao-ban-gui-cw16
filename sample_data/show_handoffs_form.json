@@ -1,0 +1,24 @@
+{
+  "key": "CH-1101",
+  "cohort": "标准厅",
+  "day": 2,
+  "received": 3,
+  "revision": 1,
+  "result_day": 5,
+  "outcome": 8.15274,
+  "observed": true,
+  "form": {
+    "排片座席": {
+      "licensed_seats": 213,
+      "attendance_basis": 3900
+    },
+    "场内巡查": {
+      "floor_spills": 3,
+      "before_next_seconds": 2220
+    },
+    "保洁交班": {
+      "waste_units": 6,
+      "stairs_to_mop": 17
+    }
+  }
+}
